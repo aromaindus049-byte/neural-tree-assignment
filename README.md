@@ -1,70 +1,128 @@
 # Neural Tree Assignment
-Author: Aroma Indus
 
-## Overview
-Neural-network correction trees for CIFAR-10 and Cats vs Dogs.
-A trained CNN supplies shared features to small neural-network
-nodes. Correction children adjust their parent's output score.
+**Author:** Aroma Indus, IIT Delhi
+
+Neural correction trees for CIFAR-10 and Cats vs Dogs.
+A trained CNN provides shared features to small neural-network nodes.
+
+## Files
+
+- `Final_Report.pdf`: architecture, results, interpretations and future work.
+- `Neural_Tree_Final.ipynb`: exploratory code, recorded outputs and figures.
 
 ## Architecture
-The CNN has two convolution layers, ReLU activations, and max
-pooling. It produces 2,048 features from 32 × 32 RGB images.
-After initial training, the CNN is frozen. Cached features are
-standardized using training-set statistics.
 
-CIFAR-10: ten binary roots with 256 hidden neurons each, plus
-a 128-neuron downward correction child for the airplane root.
-The class with the largest corrected score is selected.
+Each dataset uses its own CNN:
+two convolution/ReLU/max-pooling blocks produce 2,048 features.
 
-Cats vs Dogs: an 8-neuron binary root and an 8-neuron downward
-correction child. Labels are Cat=0 and Dog=1.
+The CNN is frozen after initial training. Features are standardized
+using training statistics and supplied to all nodes.
 
-## Final Results
+Each node is a small network:
+Linear(2048, hidden width) → ReLU → Linear(hidden width, 1).
 
-| Model | Train accuracy | Validation accuracy | Test accuracy |
+Correction children adjust root scores:
+- Child A raises scores to recover missed positives.
+- Child B lowers scores to suppress false positives.
+
+CIFAR-10 uses ten class roots and predicts the largest corrected score.
+Cats vs Dogs uses one binary root.
+
+This is a correction-tree architecture; samples are not exclusively
+routed down left/right branches.
+
+## Original Results
+
+| Model | Training accuracy | Validation accuracy | Test accuracy |
 |---|---:|---:|---:|
-| CIFAR-10 correction tree | 100.00% | 70.96% | 72.40% |
-| Compact Cats vs Dogs tree | 99.98% | 78.62% | 77.26% |
+| CIFAR-10 roots + airplane child | 100.00% | 70.96% | 72.40% |
+| Cats vs Dogs compact tree | 99.98% | 78.62% | 77.26% |
 
-The CIFAR-10 tree uses 5,515,500 parameters.
-The compact Cats vs Dogs tree uses 37,891 parameters.
+These results use the original dataset splits.
 
-## Experiments and Findings
-- CIFAR-10 root widths: 8, 32, 64, 128, 256, and 512.
-- Double descent was not observed in this capacity sweep.
-- Root and child input-gradient sensitivity maps were visualized
-  for both datasets.
-- The compact Cats vs Dogs tree uses 85.8% fewer parameters than
-  the 128-neuron root model, with slightly lower accuracy.
-- Opposite-label Cats vs Dogs examples have identical images
-  after resizing. They impose at least two unavoidable training
-  errors on deterministic classifiers using these inputs.
-- Better training fit did not produce substantial test gains.
+## Additional Experiments
 
-## Running the Code
-Main notebook: ASSIGNMENT TREE 3CNN.ipynb
+### Duplicate audit
 
-Dependencies: Python, PyTorch, torchvision, NumPy, Matplotlib,
-Pillow, certifi, and Jupyter.
+The Cats vs Dogs audit found 28 identical preprocessed-input groups.
+Ten crossed split boundaries.
 
-Install dependencies:
-    pip install torch torchvision numpy matplotlib pillow certifi jupyter
+Four validation images and six test images matching training inputs
+were excluded from revised evaluation subsets. Training was unchanged.
 
-The notebook records exploratory runs and their outputs.
-Review cells before execution: model-creation cells reset weights,
-and training cells perform additional training when rerun.
-Some early exploratory cells depend on interactive execution
-order; the notebook is not a verified restart-and-run-all pipeline.
+Two training groups contained identical inputs with conflicting labels,
+forcing at least two errors for a deterministic classifier.
 
-CIFAR-10 downloads through torchvision. Cats vs Dogs downloads
-from Microsoft. Change the Cats vs Dogs path to your local
-PetImages folder; the recorded path is:
-    /Users/aroma/data/cats_vs_dogs/PetImages
+### Adaptive growth and matched-size comparison
 
-Keep dataset images and large feature caches outside GitHub.
+Children are added according to the root's training errors.
+A fixed hidden-unit budget is divided among the needed children.
+
+For Cats vs Dogs, three seeds were evaluated with a fixed CNN:
+- Width-16 root: mean validation accuracy 78.79%.
+- Adaptive tree: mean validation accuracy 77.96%.
+
+The trees made fewer training errors on average, but the wider root
+generalized better.
+
+### CIFAR pruning
+
+The adaptive CIFAR tree reduced training errors from 239 to 55.
+Removing five zero-strength children reduced parameters from
+333,136 to 283,926, a 14.77% reduction.
+
+Training and validation predictions were preserved after pruning.
+The matched-size width-16 roots performed better than the tree.
+This comparison used one seed.
+
+### Interpolation and double descent
+
+Six CIFAR root widths were investigated: 8, 32, 64, 128, 256 and 512.
+
+After extending training, widths 32–512 reached zero training errors.
+No clear double descent was observed.
+
+Weighted validation BCE increased while validation accuracy remained
+nearly stable. Confidence was not measured directly.
+
+### Node visualizations
+
+Input-gradient sensitivity maps compare roots and children.
+Examples show both successful suppression of competing classes
+and harmful suppression of the true class.
+
+Maps describe local continuous-score sensitivity; they are not
+semantic attention maps or derivatives of the hard correction flags.
+
+## Running the Notebook
+
+Dependencies:
+Python, PyTorch, torchvision, NumPy, Pillow and Matplotlib.
+
+Training was performed in Jupyter on macOS using PyTorch MPS.
+CPU can be used if MPS is unavailable.
+
+Download CIFAR-10 through torchvision and obtain the Microsoft
+Cats vs Dogs dataset. Update local dataset paths before running.
+
+Follow the notebook sections in order:
+1. Dataset preparation and splits.
+2. CNN training and feature caching.
+3. Root and correction-child training.
+4. Capacity experiments and original evaluation.
+5. Duplicate audit and revised validation subsets.
+6. Adaptive comparisons, pruning and visualizations.
+
+The notebook contains exploratory reruns and debugging history.
+A clean restart-and-run-all execution has not been verified.
+Some later cells require checkpoints produced by earlier experiments.
 
 ## Limitations and Future Work
-Use multiple seeds and longer capacity sweeps around interpolation.
-Audit duplicate images across dataset splits. Compare shared and
-separate trunks, explore pruning and adaptive tree growth, and
-compare gradient sensitivity with occlusion-based visualizations.
+
+- CIFAR adaptive comparisons need more seeds.
+- Head-seed repeats use one fixed CNN and dataset split.
+- Parameter counts are matched; training compute is not.
+- Revised test-subset evaluation has not been performed.
+- Near-duplicates and original-resolution label conflicts need auditing.
+- Future work includes grouped splits, deeper correction trees,
+  validation-guided growth, feature compression and occlusion analysis.
