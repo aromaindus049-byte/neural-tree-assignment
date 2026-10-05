@@ -8,7 +8,7 @@ A trained CNN provides shared features to small neural-network nodes.
 ## Files
 
 - - `reportblue.pdf`: final report with architecture, results, interpretations and future work.
-- `Neural_Tree_Final.ipynb`: exploratory code, recorded outputs and figures.
+- `ASSIGNMENT TREE 3CNN.ipynb`: exploratory code, recorded outputs and figures.
 
 ## Architecture
 
